@@ -130,7 +130,48 @@ create new request --> set name "authRouter-login" --> select "POST" --> http://
 
 ![alt text](./postman2.png)
 
-## Step 7 
+## Step 7 create Middlewares folder ==> ./middlewares 
+create new file error.js --> ./middlewares/error.js 
+write code in error.js 
+
+```js
+const handleErrors =(err, req, res, next)=>{
+    //code
+    res
+    .status(err.statusCode || 500)
+    .json({message: err.message || "Something wrong!!"});
+};
+
+module.exports = handleErrors; 
+```
+update code at index.js 
+import 
+```js
+const handleErrors = require('./middlewares/error')
+```
+called 
+```js
+//handleErrors 
+app.use(handleErrors)
+``` 
+
+update  "next(error)" in auth-controller.js file  
+```js
+exports.login = (req, res, next)=>{
+    //code
+    try {
+        console.log(sssksksk)
+
+        res.json({message: "Hello Login"})
+        
+    } catch (error) {
+        console.log(error.message)
+        next(error); 
+    }
+}
+
+```
+
 
 
 

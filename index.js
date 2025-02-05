@@ -4,6 +4,7 @@ const cors = require('cors')
 const morgan = require('morgan')
 // Routing 
 const authRouter = require('./routes/auth-route')
+const handleErrors = require('./middlewares/error')
 
 
 const app = express()
@@ -18,7 +19,8 @@ app.use(express.json());
 app.use("/api", authRouter)
 
 
-
+//handleErrors 
+app.use(handleErrors)
 
 
 

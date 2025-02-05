@@ -13,12 +13,12 @@ try {
 exports.login = (req, res, next)=>{
     //code
     try {
-        // console.log(sssksksk)
+        console.log(sssksksk)
 
         res.json({message: "Hello Login"})
         
     } catch (error) {
         console.log(error.message)
-        res.status(500).json({message: "Server Error!!"})
+        next(error); 
     }
 }
