@@ -246,25 +246,438 @@ module.exports = createError;
 |POST|/api/register|email,password|
 
 
-## Step 10 use zod in auth-route 
-import 
+## Step 10 validate with zod
+/middlewares/validators.js  
+ 
 ```js
 const { z } = require("zod"); 
+
+// TEST validator
+exports.registerSchema = z.object({
+    email: z.string().email("email ไม่ถูกต้อง"), 
+    firstname: z.string().min(3,"Firstname ต้องมากกว่า 3 อักขระ"), 
+    lastname: z.string().min(3, "Lastname ต้องมากกว่า 3 อักขระ"), 
+    password: z.string().min(6, "Password ต้องมากกว่า 6 อักขระ"), 
+    confirmPassword: z.string().min(6, "Confirm Password ต้องมากกว่า 6 อักขระ"), 
+}).refine((data)=>data.password === data.confirmPassword,{
+    message:"confirm Password ไม่ตรงกัน",
+    path:["confirmPassword"]
+})
+
+exports.loginSchema = z.object({
+    email: z.string().email("email ไม่ถูกต้อง"), 
+    password: z.string().min(6, "Password ต้องมากกว่า 6 อักขระ"), 
+})
+
+
+exports.validateWithZod = (schema) => (req, res, next) =>{
+    try {
+        console.log("Hello middleware")
+        schema.parse(req.body)
+        next(); 
+    } catch (error) {
+       const errMsg = error.errors.map((item) => item.message)
+       const errTxt = errMsg.join(",")
+       const mergeError = new Error(errTxt)
+        next(mergeError);        
+    }
+}
 ```
 
-test validator 
+and then update code 
+/rotues/auth-route.js
+
+```js 
+const express = require("express"); 
+const authRouter = express.Router()
+const authController = require('../controllers/auth-controller');
+const { validateWithZod, registerSchema, loginSchema } = require("../middlewares/validators");
+
+
+//@ENDPOINT http://localhost:8999/api/register 
+authRouter.post('/register', validateWithZod(registerSchema),authController.register)
+authRouter.post('/login', validateWithZod(loginSchema),authController.login)
+
+//export 
+module.exports = authRouter;
+```
+
+
+## Step 11  Prisma 
+```bash
+npx prisma db push 
+#or 
+npx prisma migrate dev --name init 
+```
+
+## Step 12 update code in schema.prisma 
+```js
+
+```
+
+## Step 13 ลง Prisma generate 
+
+```bash 
+sudo npx prisma generate 
+```
+
+## Step 14 Config prisma
+/configs/prisma.js
 
 ```js
+const { PrismaClient } = require('@prisma/client')
+
+const prisma = new PrismaClient(); 
+
+module.exports = prisma; 
+
 ```
 
-overview 
+update code
+Register
+/controllers/auth-controller.js
 ```js
+const prisma = require("../configs/prisma");
+const createError = require("../utils/createError")
+const bcrypt = require("bcryptjs"); 
+
+exports.register = async(req, res, next)=>{
+//code
+try { 
+    
+    const {email, firstname, lastname, password, confirmPassword} = req.body 
+  
+    const checkEmail = await prisma.profile.findFirst({
+        where:{
+            email: email, 
+        },      
+    })
+    console.log(checkEmail)
+    if(checkEmail){
+        return createError(400, "Email is already exits!!!")
+    }
+
+const hashedPassword = bcrypt.hashSync(password,10)
+
+  const profile = await prisma.profile.create({
+    data:{
+        email: email,
+        firstname: firstname,
+        lastname: lastname, 
+        password: hashedPassword
+    },
+  })
+ 
+
+    res.json({message: "Register Success"})
+} catch (error) {
+    console.log(error)
+    next(error); 
+}};
+exports.login = (req, res, next)=>{
+    //code
+    try {
+        res.json({message: "Hello Login"})
+    } catch (error) {
+        console.log(error)
+        next(error);}
+}
+
 ```
 
-## Step 11 
+## Step 15 Login 
+/controllers/auth-controller.js 
+```js
+const prisma = require("../configs/prisma");
+const createError = require("../utils/createError")
+const bcrypt = require("bcryptjs"); 
+const jwt = require("jsonwebtoken")
+exports.register = async(req, res, next)=>{
+try { 
+    const {email, firstname, lastname, password, confirmPassword} = req.body 
+    const checkEmail = await prisma.profile.findFirst({
+        where:{
+            email: email, 
+        },      
+    })
+    console.log(checkEmail)
+    if(checkEmail){
+        return createError(400, "Email is already exits!!!")
+    }
+const hashedPassword = bcrypt.hashSync(password,10)
+
+  const profile = await prisma.profile.create({
+    data:{
+        email: email,
+        firstname: firstname,
+        lastname: lastname, 
+        password: hashedPassword
+    },
+  })
+    res.json({message: "Register Success"})
+} catch (error) {
+    console.log(error)
+    next(error); 
+}};
+exports.login = async(req, res, next)=>{
+    try {
+        const {email, password} = req.body; 
+        console.log(email, password);
+        const profile = await prisma.profile.findFirst({
+            where:{
+                email:email,  
+            }
+        }); 
+        if(!profile){
+            return createError(400, "Email, Password is invalid!!")
+        }
+        const isMatch = bcrypt.compareSync(password, profile.password)
+
+        if(!isMatch){
+            return createError(400, "Email, Password is invalid!!!")
+        }
+      const payload = {
+        id: profile.id, 
+        email: profile.email, 
+        firstname: profile.firstname, 
+        lastname: profile.lastname,
+        role: profile.role,
+      }
+const token = jwt.sign(payload, process.env.SECRET, {
+    expiresIn:"1d", 
+})
+      console.log(payload);
+        res.json({
+            message: "Login Success",
+            payload: payload,
+            token: token, 
+        })
+    } catch (error) {
+
+        next(error);}
+}
+
+```
+
+## Step 16 Current-user
+/controllers/auth-controller.js 
+```js
+const prisma = require("../configs/prisma");
+const createError = require("../utils/createError")
+const bcrypt = require("bcryptjs"); 
+const jwt = require("jsonwebtoken")
+
+exports.register = async(req, res, next)=>{
+//code
+try { 
+    //code 
+    // Step 1 req.body 
+    const {email, firstname, lastname, password, confirmPassword} = req.body 
+    // Step 2 validate
+    // if(!email){  
+    //     return createError(400,"Email is require"); 
+    // }
+    // if(!firstname){
+    //     return createError(400,"Firstname is require"); 
+    // }
+    // Step 3 Check already 
+    const checkEmail = await prisma.profile.findFirst({
+        where:{
+            email: email, 
+        },      
+    })
+    console.log(checkEmail)
+    if(checkEmail){
+        return createError(400, "Email is already exits!!!")
+    }
+
+    // Step 4 Encrypt bcrypt
+//const salt = bcrypt.genSaltSync(10)
+const hashedPassword = bcrypt.hashSync(password,10)
+// console.log(hashedPassword)
+
+    // Step 5 Insert tp DB
+  const profile = await prisma.profile.create({
+    data:{
+        email: email,
+        firstname: firstname,
+        lastname: lastname, 
+        password: hashedPassword
+    },
+  })
+    // Step 6 Response 
+
+    res.json({message: "Register Success"})
+} catch (error) {
+    console.log(error)
+    next(error); 
+}};
+exports.login = async(req, res, next)=>{
+    //code
+    try {
+        //step 1 req.body 
+        const {email, password} = req.body; 
+        console.log(email, password);
+        //step 2 check mail and password 
+        const profile = await prisma.profile.findFirst({
+            where:{
+                email:email,  
+            }
+        }); 
+        if(!profile){
+            return createError(400, "Email, Password is invalid!!")
+        }
+        const isMatch = bcrypt.compareSync(password, profile.password)
+
+        if(!isMatch){
+            return createError(400, "Email, Password is invalid!!!")
+        }
+
+        //step 3 Generate token
+      const payload = {
+        id: profile.id, 
+        email: profile.email, 
+        firstname: profile.firstname, 
+        lastname: profile.lastname,
+        role: profile.role,
+      }
+const token = jwt.sign(payload, process.env.SECRET, {
+    expiresIn:"1d", 
+})
+
+
+       console.log(payload);
+        //step 4 Response 
+        res.json({
+            message: "Login Success",
+            payload: payload,
+            token: token, 
+        })
+    } catch (error) {
+
+        next(error);}
+}
+
+exports.currentUser = async (req, res, next) =>{
+    //code
+    try {
+        res.json({message: "Hello, current user"})
+    } catch (error) {
+        next(error);
+    }
+}; 
 
 
 
+```
+
+
+/controllers/auth-route.js 
+```js
+const express = require("express"); 
+const authRouter = express.Router()
+const authController = require('../controllers/auth-controller');
+const { validateWithZod, registerSchema, loginSchema } = require("../middlewares/validators");
+
+
+//@ENDPOINT http://localhost:8999/api/register 
+authRouter.post('/register', validateWithZod(registerSchema),authController.register)
+authRouter.post('/login', validateWithZod(loginSchema),authController.login)
+
+authRouter.get('/current-user' ,authController.currentUser )
+
+//export 
+module.exports = authRouter;
+```
+
+
+
+## Step 17 User Controller & Routes 
+/controllers/user-controller.js 
+```js
+//1. List all users 
+//2. Update Role 
+//3. Delete User
+
+exports.listUsers = async(req, res, next)=>{
+    //code 
+   try {
+    res.json({message: "Hello, List users"})
+   } catch (error) {
+    next(error)
+   }
+};
+
+exports.updateRole = async(req,res,next) => {
+    try {
+        res.json({message: "Hello, Update Role"})
+        
+    } catch (error) {
+     next(error); 
+    }
+}; 
+
+exports.deleteUser = async(req, res, next)=>{
+   try {
+
+    res.json({message:"Hello, Delete User"})
+    
+   } catch (error) {
+    next(error)
+    
+   }
+
+
+}
+
+```
+
+/routes/user-route.js 
+```js
+const express = require("express"); 
+const userRouter = express.Router();
+// import controller 
+const userController = require('../controllers/user-controller')
+
+//@ENDPOINT http://localhost:8999/api/users
+userRouter.get('/users', userController.listUsers)
+userRouter.patch('/user/update-role', userController.updateRole)
+userRouter.delete("/user/:id", userController.deleteUser) 
+
+module.exports = userRouter;
+
+```
+
+## Step 18 Update index 
+
+```js
+//import 
+const express = require('express')
+const cors = require('cors')
+const morgan = require('morgan')
+// Routing 
+const authRouter = require('./routes/auth-route')
+const handleErrors = require('./middlewares/error')
+const userRouter = require('./routes/user-route')
+const app = express()
+
+//Middlewares
+app.use(cors()); // Allows cross domain 
+app.use(morgan("dev")); 
+app.use(express.json()); 
+
+// Routing 
+app.use("/api", authRouter)
+app.use("/api", userRouter)
+
+
+//handleErrors 
+app.use(handleErrors)
+
+//start Server
+const PORT = 8999; 
+app.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
+```
 
 
 
