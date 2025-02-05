@@ -2,6 +2,10 @@
 const express = require('express')
 const cors = require('cors')
 const morgan = require('morgan')
+// Routing 
+const authRouter = require('./routes/auth-route')
+
+
 const app = express()
 
 
@@ -11,10 +15,7 @@ app.use(morgan("dev"));
 app.use(express.json()); 
 
 // Routing 
-
-
-
-
+app.use("/api", authRouter)
 
 
 
