@@ -39,6 +39,49 @@ git commit -m "message"
 git push
 ``` 
 
+## Step 4 update package.json 
+
+```js
+"scripts": {
+    "start": "nodemon index.js"
+  },
+``` 
+
+and code index.js
+
+```js
+const express = require('express')
+const app = express()
+
+//start Server
+const PORT = 8999; 
+app.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
+
+```
+
+## Step 5 update import & middleware  ==> ./index.js
+```js 
+//import 
+const express = require('express')
+const cors = require('cors')
+const morgan = require('morgan')
+const app = express()
+
+//Middlewares
+app.use(cors()); // Allows cross domain 
+app.use(morgan("dev")); 
+app.use(express.json()); 
+
+// Routing 
+
+
+//start Server
+const PORT = 8999; 
+app.listen(PORT, () => console.log(`Server is running on port ${PORT}`));
+
+```
+
+
 
 
 
