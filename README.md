@@ -149,7 +149,7 @@ import
 ```js
 const handleErrors = require('./middlewares/error')
 ```
-called 
+called error use in index.js 
 ```js
 //handleErrors 
 app.use(handleErrors)
@@ -157,21 +157,111 @@ app.use(handleErrors)
 
 update  "next(error)" in auth-controller.js file  
 ```js
+exports.register =(req, res, next)=>{
+//code
+try { 
+    res.json({message: "hello register"})
+} catch (error) {
+    console.log(error)
+    next(error); }
+};
 exports.login = (req, res, next)=>{
     //code
     try {
-        console.log(sssksksk)
-
+        //console.log(sssksksk)
         res.json({message: "Hello Login"})
-        
     } catch (error) {
         console.log(error.message)
-        next(error); 
+        next(error);}
+}
+
+```
+when update code in Github 
+
+```bash
+git add .
+git commit -m "message"
+git push
+```  
+
+## Step 8 Update code & use Postman 
+
+postman
+![alt text](./postman3.png)
+
+update code in auth-controller
+```js
+const createError = require("../utils/createError")
+exports.register =(req, res, next)=>{
+//code
+try { 
+    //code 
+    // Step 1 req.body 
+    const {email, firstname, lastname, password, confirmPassword} = req.body 
+    // Step 2 validate
+    if(!email){  
+        return createError(400,"Email is require"); 
     }
+    if(!firstname){
+        return createError(400,"Firstname is require"); 
+    }
+    // Step 3 Check already 
+    // Step 4 Encrypt bcrypt
+    // Step 5 Insert tp DB
+    // Step 6 Response 
+    res.json({message: "hello register"})
+} catch (error) {
+    next(error); 
+}};
+exports.login = (req, res, next)=>{
+    //code
+    try {
+        //console.log(sssksksk)
+        res.json({message: "Hello Login"})
+    } catch (error) {
+        next(error);}
 }
 
 ```
 
+
+## Step 9 Create utils folder => ./utils 
+create file in utils --> ./utils/createError.js 
+write createError code
+```js
+const createError =(code, message)=>{
+//code
+
+console.log("Step 1 create error")
+const error = new Error(message)
+error.statusCode = code; 
+throw error; 
+
+};
+module.exports = createError; 
+```
+
+|METHOD|ENDPOINT|BODY|
+|-----|-----|------|
+|POST|/api/register|email,password|
+
+
+## Step 10 use zod in auth-route 
+import 
+```js
+const { z } = require("zod"); 
+```
+
+test validator 
+
+```js
+```
+
+overview 
+```js
+```
+
+## Step 11 
 
 
 
