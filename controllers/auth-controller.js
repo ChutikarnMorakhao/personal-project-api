@@ -79,7 +79,7 @@ exports.login = async(req, res, next)=>{
         role: profile.role,
       }
 const token = jwt.sign(payload, process.env.SECRET, {
-    expiresIn:"1d", 
+    expiresIn:"1D",  //อายุุ ของ token คือ session หมดเวลา 
 })
 
 
@@ -99,6 +99,9 @@ exports.currentUser = async (req, res, next) =>{
     //code
     try {
         res.json({message: "Hello, current user"})
+        
+
+
     } catch (error) {
         next(error);
     }
